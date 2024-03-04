@@ -1,0 +1,165 @@
+#pragma once
+
+#define GLM_FORCE_PURE
+// #include <glm/glm.hpp>
+
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
+
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <iostream>
+#include <cmath>
+#include <vector>
+#include <cstring>
+#include <common/loader.hpp>
+#include <common/vbo_indexer.hpp>
+#include <common/bmp_loader.hpp>
+
+namespace engine {
+    class Object {
+    public:
+        GLuint program_id;
+        GLuint VAO;
+        GLuint IBO;
+
+        GLuint u_mvp, u_model, u_view;
+        GLuint position_buffer;
+        GLuint uv_buffer;
+        GLuint normal_buffer;
+        std::vector<glm::vec3> positions;
+        std::vector<glm::vec2> uvs;
+        std::vector<glm::vec3> normals;
+
+        GLuint texture_buffer;
+        GLuint u_texture;
+
+        std::vector<unsigned int> indices;
+
+        glm::mat4 transform =glm::mat4(1.);
+        glm::mat4 ProjectionMatrix;
+        glm::mat4 ViewMatrix;
+        
+
+        Object (const char* obj_file, const char* bmp_file, GLuint program_id) {
+
+            // std::vector<glm::vec3> temp_positions;
+            // std::vector<glm::vec2> temp_uvs;
+            // std::vector<glm::vec3> temp_normals;
+
+            loadOBJ(obj_file, positions, uvs, normals);
+            // loadOBJ(obj_file, temp_positions, temp_uvs, temp_normals);
+            // indexVBO(temp_positions, temp_uvs, temp_normals, indices, positions, uvs, normals);
+            
+            this->program_id = program_id;
+
+            texture_buffer = loadBMP(bmp_file);
+            u_texture = glGetUniformLocation(program_id, "textureSampler");
+            u_mvp = glGetUniformLocation(program_id, "MVP");
+            u_view = glGetUniformLocation(program_id, "V");
+            u_model = glGetUniformLocation(program_id, "M");
+
+            // Binding VAO
+            glGenVertexArrays(1, &VAO);
+            glBindVertexArray(VAO);
+
+            // Populating position to GPU
+            glGenBuffers(1, &position_buffer);
+            glBindBuffer(GL_ARRAY_BUFFER, position_buffer);
+            glBufferData(GL_ARRAY_BUFFER, positions.size() * sizeof(glm::vec3), &positions[0], GL_STATIC_DRAW);
+            
+            // Attribute pointer for position
+            glEnableVertexAttribArray(0);
+            glVertexAttribPointer(
+                0,                  // attribute
+                3,                  // size
+                GL_FLOAT,           // type
+                GL_FALSE,           // normalized?
+                0,                  // stride
+                (void*)0            // array buffer offset
+            );
+
+            // Populating uv to GPU
+            glGenBuffers(1, &uv_buffer);
+            glBindBuffer(GL_ARRAY_BUFFER, uv_buffer);
+            glBufferData(GL_ARRAY_BUFFER, uvs.size() * sizeof(glm::vec2), &uvs[0], GL_STATIC_DRAW);
+
+            glEnableVertexAttribArray(1);
+            glBindBuffer(GL_ARRAY_BUFFER, uv_buffer);
+            glVertexAttribPointer(
+                1,                                // attribute
+                2,                                // size
+                GL_FLOAT,                         // type
+                GL_FALSE,                         // normalized?
+                0,                                // stride
+                (void*)0                          // array buffer offset
+            );
+
+            // Populating normals to GPU
+            glGenBuffers(1, &normal_buffer);
+            glBindBuffer(GL_ARRAY_BUFFER, normal_buffer);
+            glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(glm::vec2), &normals[0], GL_STATIC_DRAW);
+            
+            glEnableVertexAttribArray(2);
+            glVertexAttribPointer(
+                2,                                // attribute
+                2,                                // size
+                GL_FLOAT,                         // type
+                GL_FALSE,                         // normalized?
+                0,                                // stride
+                (void*)0                          // array buffer offset
+            );
+
+            glGenBuffers(1, &IBO);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned short), &indices[0] , GL_STATIC_DRAW);
+
+            // std::cout << IBO;
+            // for (auto x: indices) {
+            //     std::cout << x << std::endl;
+            // }
+
+            // for (int i = 0; i < positions.size(); i++) {
+            //     std::cout << positions[i][0] << ", " << positions[i][1] << ", " << positions[i][2] << ", " << uvs[i][0] << ", " << uvs[i][1] << ", " << normals[i][0] << ", " << normals[i][1] << std::endl;
+            // }
+        }
+
+        ~Object() {
+            glDeleteBuffers(1, &position_buffer);
+            glDeleteBuffers(1, &uv_buffer);
+            glDeleteBuffers(1, &normal_buffer);
+            glDeleteBuffers(1, &IBO);
+            glDeleteProgram(program_id);
+            glDeleteTextures(1, &texture_buffer);
+            glDeleteVertexArrays(1, &VAO);
+        }
+
+        void render_with_projection() {
+            ProjectionMatrix = getProjectionMatrix();
+            ViewMatrix  = getViewMatrix();
+            render();
+        }
+
+        virtual void render() {
+            glUseProgram(program_id);
+
+            glm::mat4 MVP = ProjectionMatrix * ViewMatrix * transform;
+
+            // Send our transformation to the currently bound shader, 
+            // in the "MVP" uniform
+            glUniformMatrix4fv(u_mvp, 1, GL_FALSE, &MVP[0][0]);
+            glUniformMatrix4fv(u_model, 1, GL_FALSE, &transform[0][0]);
+            glUniformMatrix4fv(u_view, 1, GL_FALSE, &ViewMatrix[0][0]);
+
+            // Bind our texture in Texture Unit 0
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, texture_buffer);
+            // Set our "textureSampler" sampler to use Texture Unit 0
+            glUniform1i(u_texture, 0);
+
+            // Draw the object
+            glBindVertexArray(VAO);
+            glDrawArrays(GL_TRIANGLES, 0, positions.size() );
+        }
+    };
+}
