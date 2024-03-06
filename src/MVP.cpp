@@ -1,6 +1,5 @@
 #define GLM_FORCE_PURE
 
-#include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
 #include <glm/vec3.hpp> // glm::vec3
@@ -18,13 +17,20 @@
 #include <engine/scene.hpp>
 #include <engine/object.hpp>
 
+enum class CAMERA_MODE{
+    DEFAULT_PROJECTION,
+    DEFAULT_ORTHOGRAPHIC,
+    FREE_VIEW,
+    PROJECTION_1,
+    PROJECTION_2,
+    PROJECTION_3
+};
+
 class MainScene : engine::Scene {
 public:
     GLFWwindow* window;
-    engine::Object *cube, *plane;
-
-    glm::mat4 ProjectionMatrix;
-	glm::mat4 ViewMatrix;       
+    engine::Object *cube_1, *cube_2, *cube_3, *plane;
+    CAMERA_MODE camera_mode = CAMERA_MODE::DEFAULT_ORTHOGRAPHIC;       
 
     MainScene (GLFWwindow* window): Scene(window) {
         this->window = window;
@@ -35,56 +41,139 @@ public:
         glEnable(GL_DEPTH_TEST);
 
         // Accept fragment if it is closer to the camera than the former one
-        glDepthFunc(GL_LESS); 
+        glDepthFunc(GL_LEQUAL); 
 
         // Cull triangles which normal is not towards the camera
-        glEnable(GL_CULL_FACE);
+        // glEnable(GL_CULL_FACE);
 
         // Blending
         glEnable(GL_BLEND);
         // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+        // Associate the object instance with the GLFW window
+        glfwSetWindowUserPointer(window, this);
+
         start();
     }
 
     void start() override {
-        GLuint shader = LoadShaders("res/shader/basic.vs", "res/shader/basic.fs");
+        // ======================== PLANE ========================
 
-        cube = new engine::Object("res/obj/box.obj", "res/bmp/box.bmp", shader);
+        // LOAD PLANE SHADERS AND MODEL
+        GLuint shader = LoadShaders("res/shader/Textured.vs", "res/shader/Textured.fs");
+        plane = new engine::Object("res/obj/plane.obj", "res/bmp/plane_tugas.bmp", shader, this);
 
-        cube->transform = glm::translate(cube->transform, vec3(0, 0, 5));
-        cube->transform = glm::scale(cube->transform, vec3(0.5, 0.5, 0.5));
-        cube->transform = glm::rotate(cube->transform, glm::radians(45.f), vec3(0, 1, 0));
+        // ======================== CUBES ========================
 
-        shader = LoadShaders("res/shader/plane.vs", "res/shader/plane.fs");
+        // LOAD CUBE SHADERS AND MODEL I
+        shader = LoadShaders("res/shader/Textured.vs", "res/shader/Textured.fs");
+        cube_1 = new engine::Object("res/obj/box.obj", "res/bmp/box.bmp", shader, this);
 
-        plane = new engine::Object("res/obj/plane.obj", "res/bmp/plane.bmp", shader);
+        // TRANSFORM THE CUBE
+        // TODO 1: PINDAHKAN CUBE INI KE TRACE 1 PERSEGI DI PLANE
 
-        plane->transform = glm::translate(plane->transform, vec3(0, -1, 0));
+        // LOAD CUBE SHADERS AND MODEL II
+        shader = LoadShaders("res/shader/Textured.vs", "res/shader/Textured.fs");
+        cube_2 = new engine::Object("res/obj/box.obj", "res/bmp/box.bmp", shader, this);
 
-        ProjectionMatrix = glm::perspective(glm::radians(45.f), 4.0f / 3.0f, 0.1f, 1000.0f);
+        // TRANSFORM THE CUBE
+        // TODO 2: PINDAHKAN CUBE INI KE TRACE 2 PERSEGI DI PLANE
 
-        auto up = vec3( 0, 1, 0);
-        ViewMatrix = glm::lookAt(
-								vec3(0, 2, 0),           // Camera postion
-								vec3(0, 0, 5), // and looks here : at the same position, plus "direction"
-								up                  // Head is up (set to 0,-1,0 to look upside-down)
-                        );
+        // LOAD CUBE SHADERS AND MODEL III
+        shader = LoadShaders("res/shader/Textured.vs", "res/shader/Textured.fs");
+        cube_3 = new engine::Object("res/obj/box.obj", "res/bmp/box.bmp", shader, this);
 
-        plane->ViewMatrix = ViewMatrix;
-        plane->ProjectionMatrix = ProjectionMatrix;
+        // TRANSFORM THE CUBE
+        // TODO 3: PINDAHKAN CUBE INI KE TRACE 2 PERSEGI DI PLANE
 
-        cube->ViewMatrix = ViewMatrix;
-        cube->ProjectionMatrix = ProjectionMatrix;
+        // binding keys
+        glfwSetKeyCallback(window, keyCallbackStatic);
     }
 
     void update() override {
         Scene::update();
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        computeMatricesFromInputs(window);
+
+        auto up = vec3( 0, 1, 0);
+        auto aspect_ratio = (float)window_width/window_height;
+        switch (camera_mode) {
+            case CAMERA_MODE::DEFAULT_ORTHOGRAPHIC:
+                ViewMatrix = glm::lookAt(
+                    vec3(0, 200, 1),
+                    vec3(0, 0, 0),
+                    up
+                );
+                ProjectionMatrix = glm::ortho<float>(-80*aspect_ratio, 80*aspect_ratio, -80, 80, -1000, 1000);
+                break;
+            case CAMERA_MODE::DEFAULT_PROJECTION:
+                ViewMatrix = glm::lookAt(
+                    vec3(0, 200, 1),
+                    vec3(0, 0, 0),
+                    up
+                );
+                ProjectionMatrix = glm::perspective<float>(glm::radians(45.f), aspect_ratio, 0.1f, 1000.0f);
+                break;
+            case CAMERA_MODE::PROJECTION_1:
+                // TODO 4: CREATE PROJECTION FOR PROJECTION_1 (See module)
+                ViewMatrix; // edit this
+                ProjectionMatrix; // edit this
+                break;  
+            case CAMERA_MODE::PROJECTION_2:
+                // TODO 5: CREATE PROJECTION FOR PROJECTION_2 (See module)
+                ViewMatrix; // edit this
+                ProjectionMatrix; // edit this
+                break;
+            case CAMERA_MODE::PROJECTION_3:
+                // TODO 6: CREATE PROJECTION FOR PROJECTION_3 (See module)
+                ViewMatrix; // edit this
+                ProjectionMatrix; // edit this
+                break;
+            case CAMERA_MODE::FREE_VIEW:
+                // Don't touch
+                computeMatricesFromInputs(window);
+                ViewMatrix = getViewMatrix();
+                ProjectionMatrix = getProjectionMatrix();
+                break;
+        }
+
         
-        /* do every frame here*/
-        plane->render();
-        cube->render();
+        cube_1->render_with_projection();
+        cube_2->render_with_projection();
+        cube_3->render_with_projection();
+        plane->render_with_projection();
     }
+
+private:
+    void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+        if (action == GLFW_PRESS) {
+            std::cout << key << std::endl;
+            switch (key) {
+            case GLFW_KEY_1:
+                camera_mode = CAMERA_MODE::DEFAULT_ORTHOGRAPHIC;
+                break;
+            case GLFW_KEY_2:
+                camera_mode = CAMERA_MODE::DEFAULT_PROJECTION;
+                break;
+            case GLFW_KEY_3:
+                camera_mode = CAMERA_MODE::PROJECTION_1;
+                break;
+            case GLFW_KEY_4:
+                camera_mode = CAMERA_MODE::PROJECTION_2;
+                break;
+            case GLFW_KEY_5:
+                camera_mode = CAMERA_MODE::PROJECTION_3;
+                break;
+            case GLFW_KEY_0:
+                camera_mode = CAMERA_MODE::FREE_VIEW;
+                break;
+            }
+        }
+    }
+
+    static void keyCallbackStatic(GLFWwindow* window, int key, int scancode, int action, int mods) {
+        MainScene* instance = static_cast<MainScene*>(glfwGetWindowUserPointer(window));
+        instance->key_callback(window, key, scancode, action, mods);
+    }
+    
+
 };

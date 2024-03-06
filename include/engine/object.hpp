@@ -15,6 +15,7 @@
 #include <common/loader.hpp>
 #include <common/vbo_indexer.hpp>
 #include <common/bmp_loader.hpp>
+#include <engine/scene.hpp>
 
 namespace engine {
     class Object {
@@ -37,12 +38,11 @@ namespace engine {
         std::vector<unsigned int> indices;
 
         glm::mat4 transform =glm::mat4(1.);
-        glm::mat4 ProjectionMatrix;
-        glm::mat4 ViewMatrix;
+        Scene *scene;
         
 
-        Object (const char* obj_file, const char* bmp_file, GLuint program_id) {
-
+        Object (const char* obj_file, const char* bmp_file, GLuint program_id, Scene* scene) {
+            this->scene = scene;
             // std::vector<glm::vec3> temp_positions;
             // std::vector<glm::vec2> temp_uvs;
             // std::vector<glm::vec3> temp_normals;
@@ -143,13 +143,13 @@ namespace engine {
         virtual void render() {
             glUseProgram(program_id);
 
-            glm::mat4 MVP = ProjectionMatrix * ViewMatrix * transform;
+            glm::mat4 MVP = this->scene->ProjectionMatrix * this->scene->ViewMatrix * transform;
 
             // Send our transformation to the currently bound shader, 
             // in the "MVP" uniform
             glUniformMatrix4fv(u_mvp, 1, GL_FALSE, &MVP[0][0]);
             glUniformMatrix4fv(u_model, 1, GL_FALSE, &transform[0][0]);
-            glUniformMatrix4fv(u_view, 1, GL_FALSE, &ViewMatrix[0][0]);
+            glUniformMatrix4fv(u_view, 1, GL_FALSE, &this->scene->ViewMatrix[0][0]);
 
             // Bind our texture in Texture Unit 0
             glActiveTexture(GL_TEXTURE0);

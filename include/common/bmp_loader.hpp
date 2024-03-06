@@ -1,3 +1,6 @@
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb/stb_image.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -92,57 +95,102 @@ GLuint loadBMP_custom(const char * imagepath){
 	return textureID;
 }
 
+
 GLuint loadBMP(const char* imagepath) {
-    unsigned char header[54];
-    unsigned char* data;
-    unsigned int dataPos, imageSize, width, height;
+	int         req_channels = 3; // 3 color channels of BMP-file   
 
-    FILE* file = fopen(imagepath, "rb");
-    if (!file) {
-        printf("%s not found\n", imagepath);
-        getchar();
-        return 0;
-    } if (fread(header, 1, 54, file) != 54) {
-        printf("Invalid BMP file\n");
-        fclose(file);
-        return 0;
-    } if ( header[0]!='B' || header[1]!='M' ) {
-		printf("Not a correct BMP file\n");
-		fclose(file);
-		return 0;
-	} if (*(int*) &(header[0x1E]) != 0) {
-        printf("Not a correct BMP file\n");
-		fclose(file);
-		return 0;
-    } if (*(int*) &(header[0x1C]) != 24) {
-        printf("Not a correct BMP file\n");
-		fclose(file);
-		return 0;
-    }
+	int width = 0, height = 0, channels = 0;
 
-    dataPos     = *(int*) &(header[0x0A]);
-    imageSize   = *(int*) &(header[0x22]);
-	width       = *(int*) &(header[0x12]);
-	height      = *(int*) &(header[0x16]);
+	stbi_set_flip_vertically_on_load(true);
+	stbi_uc *image = stbi_load( imagepath, &width, &height, &channels, 3 ); 
 
-    if (imageSize==0) imageSize = width * height * 3;
-    if (dataPos==0) dataPos = 54;
+	GLuint textureId = 0;
+	if ( image != nullptr )
+	{
+		glGenTextures(1, &textureId);
+		glBindTexture(GL_TEXTURE_2D, textureId);
 
-    data = new unsigned char[imageSize];
-    fread(data, 1, imageSize, file);
-    fclose(file);
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glGenerateMipmap(GL_TEXTURE_2D);
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 4); // default
 
-    GLuint textureID;
-    glGenTextures(1, &textureID);
-    glBindTexture(GL_TEXTURE_2D, textureID);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_BGR, GL_UNSIGNED_BYTE, data);
-    delete [] data;
+		stbi_image_free( image );
+	}
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glGenerateMipmap(GL_TEXTURE_2D);
+	return textureId;
 
-    return textureID;
+	// std::cout << "OK O" << std::endl;
+
+    // unsigned char header[54];
+    // unsigned char* data;
+    // unsigned int dataPos, imageSize, width, height;
+
+    // FILE* file = fopen(imagepath, "rb");
+    // if (!file) {
+    //     printf("%s not found\n", imagepath);
+    //     getchar();
+    //     return 0;
+    // } if (fread(header, 1, 54, file) != 54) {
+    //     printf("Invalid BMP file\n");
+    //     fclose(file);
+    //     return 0;
+    // } if ( header[0]!='B' || header[1]!='M' ) {
+	// 	printf("Not a correct BMP file\n");
+	// 	fclose(file);
+	// 	return 0;
+	// } if (*(int*) &(header[0x1E]) != 0) {
+    //     printf("Not a correct BMP file\n");
+	// 	fclose(file);
+	// 	return 0;
+    // } if (*(int*) &(header[0x1C]) != 24) {
+    //     printf("Not a correct BMP file\n");
+	// 	fclose(file);
+	// 	return 0;
+    // }
+
+	// std::cout << "OK Opened" << std::endl;
+
+
+    // dataPos     = *(int*) &(header[0x0A]);
+    // imageSize   = *(int*) &(header[0x22]);
+	// width       = *(int*) &(header[0x12]);
+	// height      = *(int*) &(header[0x16]);
+
+    // if (imageSize==0) imageSize = width * height * 3;
+    // if (dataPos==0) dataPos = 54;
+
+    // data = new unsigned char[imageSize];
+    // fread(data, 1, imageSize, file);
+    // fclose(file);
+	// std::cout << "OK Read" << std::endl;
+
+
+    // GLuint textureID;
+    // glGenTextures(1, &textureID);
+	// std::cout << "OK Clean -1" << std::endl;
+
+    // glBindTexture(GL_TEXTURE_2D, textureID);
+	// std::cout << "OK Clean 0" << std::endl;
+	
+    // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_BGR, GL_UNSIGNED_BYTE, data);
+	// std::cout << "OK Clean 1" << std::endl;
+
+    // delete [] data;
+	// std::cout << "OK Clean" << std::endl;
+
+
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    // glGenerateMipmap(GL_TEXTURE_2D);
+
+	// std::cout << "OK end" << std::endl;
+
+    // return textureID;
 }

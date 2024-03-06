@@ -44,6 +44,8 @@ namespace engine {
         GLFWwindow* window;
         int window_height;
         int window_width;
+        glm::mat4 ProjectionMatrix;
+	    glm::mat4 ViewMatrix;
 
         // time stuff
         duration<double> delta_time;
